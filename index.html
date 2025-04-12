@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chitti AI - Medical Diagnosis Assistant</title>
+    <style>
+        :root {
+            --primary-color: #1976D2;
+            --secondary-color: #0D47A1;
+            --background-color: #E3F2FD;
+            --message-bg-user: #E1F5FE;
+            --message-bg-bot: #FFFFFF;
+            --text-color: #212121;
+            --border-radius: 18px;
+            --emergency-color: #D32F2F;
+            --warning-color: #FFA000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header::after {
+            content: "MD";
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            color: var(--primary-color);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 80px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--message-bg-user);
+            border-radius: var(--border-radius) var(--border-radius) 0 var(--border-radius);
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            background-color: var(--message-bg-bot);
+            border-radius: var(--border-radius) var(--border-radius) var(--border-radius) 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .emergency-message {
+            background-color: #FFEBEE;
+            border-left: 4px solid var(--emergency-color);
+            animation: pulseWarning 1.5s infinite;
+        }
+
+        .warning-message {
+            background-color: #FFF8E1;
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .message-content {
+            padding: 12px 15px;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .medical-card {
+            background-color: #E8EAF6;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 10px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .diagnosis-card {
+            background-color: #E0F7FA;
+            border-radius: 12px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+
+        .dosage-card {
+            background-color: #F1F8E9;
+            border-radius: 12px;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid #689F38;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: var(--secondary-color);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .age-group {
+            font-weight: bold;
+            color: #00796B;
+            margin: 8px 0 4px 0;
+        }
+
+        .input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #message-input {
+            flex: 1;
+            border: 1px solid #BBDEFB;
+            border-radius: 20px;
+            padding: 12px 15px;
+            font-size: 1rem;
+            outline: none;
+            margin-right: 10px;
+            min-height: 40px;
+            max-height: 120px;
+            resize: none;
+            background-color: #E3F2FD;
+        }
+
+        #send-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        #send-button:disabled {
+            background-color: #BBDEFB;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .typing-indicator {
+            display: flex;
+            padding: 10px 15px;
+            align-self: flex-start;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #1976D2;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+
+        @keyframes pulseWarning {
+            0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(211, 47, 47, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+        }
+
+        @media (min-width: 768px) {
+            body {
+                max-width: 450px;
+                margin: 0 auto;
+                border-left: 1px solid #BBDEFB;
+                border-right: 1px solid #BBDEFB;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">Chitti AI - Medical Diagnosis</div>
+    
+
+    <div class="chat-container" id="chat-container">
+        <!-- Messages will appear here -->
+    </div>
+    <div class="input-container">
+        <textarea id="message-input" placeholder="Describe symptoms, age, and medical history..." rows="1"></textarea>
+        <button id="send-button" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chat-container');
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            const API_URL = 'http://localhost:3000/api/chat';
+
+            chatContainer.innerHTML = `
+                <div>
+                    <strong>Hi, I'm Chitti AI</strong>, your medical assistant. How can I help you today?
+                </div>
+                <div>
+                    
+                    <strong>Don't fear while Chitti is here!</strong>
+                    <em>Created by Pandi</em><br>
+                </div>
+            `;
+            
+            // Auto-resize textarea
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight > 120 ? 120 : this.scrollHeight) + 'px';
+            });
+
+            // Enable/disable send button based on input
+            messageInput.addEventListener('input', function() {
+                sendButton.disabled = this.value.trim() === '';
+            });
+
+            // Send message on button click
+            sendButton.addEventListener('click', sendMessage);
+            
+            // Send message on Enter key (but allow Shift+Enter for new lines)
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Initial welcome message
+            addMessage('bot', `
+                <div class="medical-card">
+                    <strong>Hi, I'm Chitti AI</strong>, your medical assistant. How can I help you today?
+                </div>
+                <div class="diagnosis-card">
+                    <span class="info-label">For accurate diagnosis please provide:</span>
+                    • Current symptoms<br>
+                    • Patient age<br>
+                    • Duration of symptoms<br>
+                    • Any existing conditions<br>
+                    • Medications being taken
+                </div>
+                <div class="warning-message">
+                    <strong>Note:</strong> This is for informational purposes only. Always consult a healthcare professional for medical advice.
+                    <br><br>
+                    <em>Created by Veerapandi</em><br>
+                    <strong>Don't worry while Chitti is here!</strong>
+                </div>
+            `);
+
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                // Add user message to chat
+                addMessage('user', message);
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                sendButton.disabled = true;
+                
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'message bot-message typing-indicator';
+                typingIndicator.innerHTML = `
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                `;
+                chatContainer.appendChild(typingIndicator);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // Prepare the detailed medical prompt
+                const medicalPrompt = `[DOCTOR AI MODE] Patient reports: "${message}". 
+                    Respond as Dr. AI with this exact structure:
+                    
+                    <div class="medical-card">
+                    <span class="info-label">DIAGNOSIS:</span> [Possible conditions, probability]
+                    <span class="info-label">SYMPTOMATOLOGY:</span> [Key symptoms assessment]
+                    <span class="info-label">DIFFERENTIAL DIAGNOSIS:</span> [Other possible conditions]
+                    </div>
+                    
+                    <div class="diagnosis-card">
+                    <span class="info-label">RECOMMENDED TESTS:</span> [Lab/imaging suggestions]
+                    <span class="info-label">TREATMENT PLAN:</span> [Therapeutic approaches]
+                    </div>
+                    
+                    <div class="dosage-card">
+                    <span class="info-label">MEDICATION GUIDELINES:</span>
+                    <span class="age-group">Children (2-11 years):</span> [Dosage, frequency, precautions]
+                    <span class="age-group">Adolescents (12-17 years):</span> [Dosage, frequency]
+                    <span class="age-group">Adults (18-64 years):</span> [Dosage, frequency]
+                    <span class="age-group">Elderly (65+ years):</span> [Adjusted dosage, precautions]
+                    </div>
+                    
+                    <div class="warning-message">
+                    <span class="info-label">WARNINGS:</span> [Contraindications, side effects]
+                    <span class="info-label">WHEN TO SEEK EMERGENCY CARE:</span> [Red flag symptoms]
+                    </div>
+                    
+                    Present as Dr. AI without mentioning language models. Use medical terminology but explain simply.`;
+
+                // Send to API
+                fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: medicalPrompt,
+                        sessionId: 'doctor-ai-user'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove typing indicator
+                    const indicators = document.querySelectorAll('.typing-indicator');
+                    indicators.forEach(ind => ind.remove());
+                    
+                    // Add bot response
+                    if (data.response) {
+                        addMessage('bot', data.response);
+                    } else {
+                        addMessage('bot', `<div class="warning-message">
+                            <span class="info-label">System Error:</span> Unable to process request. 
+                            For urgent matters, please contact emergency services immediately.
+                        </div>`);
+                    }
+                })
+                .catch(function(error) {  // Fixed arrow function syntax here
+                    console.error('Error:', error);
+                    // Remove typing indicator
+                    const indicators = document.querySelectorAll('.typing-indicator');
+                    indicators.forEach(ind => ind.remove());
+                    
+                    addMessage('bot', `<div class="emergency-message">
+                        <span class="info-label">Connection Error:</span> 
+                        If this is a medical emergency, call your local emergency number immediately.
+                        Otherwise, please try again shortly.
+                    </div>`);
+                });
+    
+                function addMessage(sender, text) {
+                    const messageElement = document.createElement('div');
+                    messageElement.className = `message ${sender}-message`;
+                    
+                    const now = new Date();
+                    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    messageElement.innerHTML = `
+                        <div class="message-content">${formatMessageText(text)}</div>
+                        <div class="message-time">${timeString}</div>
+                    `;
+                    
+                    chatContainer.appendChild(messageElement);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+    
+                function formatMessageText(text) {
+                    // Simple formatting for newlines
+                    return text.replace(/\n/g, '<br>');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
